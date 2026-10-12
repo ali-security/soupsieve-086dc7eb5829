@@ -1,5 +1,6 @@
 """Test language selectors."""
 from .. import util
+import soupsieve as sv
 
 
 class TestLang(util.TestCase):
@@ -86,6 +87,12 @@ class TestLang(util.TestCase):
             [],
             flags=util.HTML
         )
+
+    def test_lang_unclosed_quote(self):
+        """Test language with an unclosed quoted value fails for syntax error, not timeout error."""
+
+        self.assert_raises_quickly('p:lang("' + ('x' * 300), sv.SelectorSyntaxError)
+        self.assert_raises_quickly("p:lang('" + ('x' * 300), sv.SelectorSyntaxError)
 
     def test_wildcard_start_collapse(self):
         """Test that language with multiple wildcard patterns at start collapse."""

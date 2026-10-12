@@ -2,6 +2,9 @@
 import unittest
 import bs4
 import textwrap
+import signal
+import threading
+import time
 import soupsieve as sv
 import pytest
 
@@ -102,6 +105,41 @@ class TestCase(unittest.TestCase):
         print('----Running Assert Test----')
         with self.assertRaises(exception):
             self.compile_pattern(pattern, namespaces=namespace, custom=custom)
+
+    def assert_raises_quickly(self, pattern, exception, timeout=3):
+        """
+        Assert the pattern fails with the given exception, not by timing out.
+
+        Where `SIGALRM` is available (and we are on the main thread), an alarm aborts
+        a runaway match so a catastrophic backtracking regression fails fast. On other
+        platforms (Windows) the compile is timed instead.
+        """
+
+        print('----Running Assert Quickly Test----')
+        if hasattr(signal, 'SIGALRM') and threading.current_thread() is threading.main_thread():
+
+            def timeout_handler(signum, frame):
+                raise TimeoutError
+
+            original_handler = signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(timeout)
+
+            passed = False
+            try:
+                with self.assertRaises(exception):
+                    sv.compile(pattern)
+                passed = True
+            except TimeoutError:
+                pass
+            finally:
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, original_handler)
+            self.assertTrue(passed, 'Timed out compiling {!r}'.format(pattern))
+        else:
+            start = time.monotonic()
+            with self.assertRaises(exception):
+                sv.compile(pattern)
+            self.assertLess(time.monotonic() - start, timeout, 'Timed out compiling {!r}'.format(pattern))
 
     def assert_selector(self, markup, selectors, expected_ids, namespaces={}, custom=None, flags=0):
         """Assert selector."""

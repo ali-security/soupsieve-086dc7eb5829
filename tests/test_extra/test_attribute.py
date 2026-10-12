@@ -1,5 +1,6 @@
 """Test attribute selectors."""
 from .. import util
+import soupsieve as sv
 
 
 class TestAttribute(util.TestCase):
@@ -48,5 +49,37 @@ class TestAttribute(util.TestCase):
             self.MARKUP,
             'body [id!="5"]',
             ["div", "0", "1", "2", "3", "pre", "4", "6"],
+            flags=util.HTML5
+        )
+
+    def test_bad_attribute_unclused(self):
+        """Test bad attribute fails for syntax error, not timeout error."""
+
+        self.assert_raises_quickly('[a="' + ('x' * 300), sv.SelectorSyntaxError)
+
+    def test_bad_attribute_unclosed_single_quote(self):
+        """Test bad attribute with an unclosed single quoted value fails for syntax error, not timeout error."""
+
+        self.assert_raises_quickly("[a='" + ('x' * 300), sv.SelectorSyntaxError)
+
+    def test_bad_attribute_unclosed_not_equal(self):
+        """Test bad `!=` attribute with an unclosed quoted value fails for syntax error, not timeout error."""
+
+        self.assert_raises_quickly('[a!="' + ('x' * 300), sv.SelectorSyntaxError)
+
+    def test_attribute_quoted_value_after_fix(self):
+        """Test quoted values with escapes and escaped newlines still match after the value pattern fix."""
+
+        self.assert_selector(
+            self.MARKUP,
+            'body [href="http:\\/\\/google.com"]',
+            ["2"],
+            flags=util.HTML5
+        )
+
+        self.assert_selector(
+            self.MARKUP,
+            "body [href='http://goo\\\ngle.com']",
+            ["2"],
             flags=util.HTML5
         )
